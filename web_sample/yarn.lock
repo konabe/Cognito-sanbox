@@ -114,7 +114,7 @@
     "@aws-amplify/plugin-types" "^1.0.1"
     "@aws-sdk/util-arn-parser" "^3.465.0"
 
-"@aws-amplify/auth@6.3.12":
+"@aws-amplify/auth@6.3.12", "@aws-amplify/auth@^6.3.12":
   version "6.3.12"
   resolved "https://registry.yarnpkg.com/@aws-amplify/auth/-/auth-6.3.12.tgz#14e2d2fd355f5768ec6eb8c1c755dcb96aee74e1"
   integrity sha512-z22z3t73Z++bTj2Odr/mACgWBgsGT+lMCAZgTHq/CyxVtfXT/FZrrDx78Nm9RBXXAESsYmJiU9CT65w8lthg1Q==
