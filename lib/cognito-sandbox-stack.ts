@@ -10,6 +10,28 @@ export class CognitoSandboxStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const lambdaRole = new iam.Role(this, "LambdaRole", {
+      roleName: "cognito-sandbox-lambda-role",
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      inlinePolicies: {
+        CloudWatchWritePolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "cognito-sync:*",
+                "cognito-identity:*",
+                "cognito-idp:*",
+              ],
+              resources: ["*"],
+            }),
+          ],
+        }),
+      },
+    });
     const defineAuthChallengeFunction = new lambda_nodejs.NodejsFunction(
       this,
       "DefineAuthChallengeFunction",
@@ -18,6 +40,44 @@ export class CognitoSandboxStack extends cdk.Stack {
         entry: path.join(__dirname, "../lambda/defineAuthChallenge.ts"),
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "handler",
+        role: lambdaRole,
+      }
+    );
+    const createAuthChallengeFunction = new lambda_nodejs.NodejsFunction(
+      this,
+      "CreateAuthChallengeFunction",
+      {
+        functionName: "cognito-sandbox-create-auth-challenge",
+        entry: path.join(__dirname, "../lambda/createAuthChallenge.ts"),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        role: lambdaRole,
+      }
+    );
+    const verifyAuthChallengeResponseFunction =
+      new lambda_nodejs.NodejsFunction(
+        this,
+        "VerifyAuthChallengeresponseFunction",
+        {
+          functionName: "cognito-sandbox-verify-auth-challenge-response",
+          entry: path.join(
+            __dirname,
+            "../lambda/verifyAuthChallengeRepsonse.ts"
+          ),
+          runtime: lambda.Runtime.NODEJS_20_X,
+          handler: "handler",
+          role: lambdaRole,
+        }
+      );
+    const postAuthenticationFunction = new lambda_nodejs.NodejsFunction(
+      this,
+      "PostAuthenticationFunction",
+      {
+        functionName: "cognito-sandbox-post-authentication",
+        entry: path.join(__dirname, "../lambda/postAuthentication.ts"),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        role: lambdaRole,
       }
     );
 
@@ -29,6 +89,12 @@ export class CognitoSandboxStack extends cdk.Stack {
       },
       lambdaTriggers: {
         defineAuthChallenge: defineAuthChallengeFunction,
+        createAuthChallenge: createAuthChallengeFunction,
+        verifyAuthChallengeResponse: verifyAuthChallengeResponseFunction,
+        postAuthentication: postAuthenticationFunction,
+      },
+      customAttributes: {
+        lastLoginAt: new cognito.NumberAttribute({ mutable: true }),
       },
       deletionProtection: false, // 実験的な物なので削除可
     });
@@ -45,7 +111,7 @@ export class CognitoSandboxStack extends cdk.Stack {
       accessTokenValidity: cdk.Duration.minutes(5),
       refreshTokenValidity: cdk.Duration.minutes(60),
       idTokenValidity: cdk.Duration.minutes(20),
-      preventUserExistenceErrors: true,
+      preventUserExistenceErrors: false, // 学習のためエラーの詳細がわかるようにする。
     });
 
     const identityPool = new cognito.CfnIdentityPool(this, "IdentityPool", {
