@@ -1,15 +1,40 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import { Amplify } from "aws-amplify";
 import { Authenticator } from "@aws-amplify/ui-react";
 
-import { Amplify } from "aws-amplify";
-import outputs from "../amplify_outputs.json";
-
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
 import "@aws-amplify/ui-react/styles.css";
 import "./App.css";
 
-Amplify.configure(outputs);
+// ref. https://docs.amplify.aws/react/build-a-backend/auth/use-existing-cognito-resources/#use-auth-resources-without-an-amplify-backend
+
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
+      userPoolClientId: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID,
+      identityPoolId: import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID,
+      loginWith: {
+        email: true,
+      },
+      signUpVerificationMethod: "code",
+      userAttributes: {
+        email: {
+          required: true,
+        },
+      },
+      allowGuestAccess: true,
+      passwordFormat: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireNumbers: true,
+        requireSpecialCharacters: true,
+      },
+    },
+  },
+});
 function App() {
   const [count, setCount] = useState(0);
 
