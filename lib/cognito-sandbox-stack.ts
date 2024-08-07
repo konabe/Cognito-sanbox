@@ -25,6 +25,7 @@ export class CognitoSandboxStack extends cdk.Stack {
                 "cognito-sync:*",
                 "cognito-identity:*",
                 "cognito-idp:*",
+                "ses:SendEmail",
               ],
               resources: ["*"],
             }),
@@ -52,6 +53,9 @@ export class CognitoSandboxStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "handler",
         role: lambdaRole,
+        environment: {
+          EMAIL_SOURCE: process.env.EMAIL_SOURCE ?? "",
+        },
       }
     );
     const verifyAuthChallengeResponseFunction =
@@ -78,6 +82,9 @@ export class CognitoSandboxStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: "handler",
         role: lambdaRole,
+        environment: {
+          EMAIL_SOURCE: process.env.EMAIL_SOURCE ?? "",
+        },
       }
     );
 
