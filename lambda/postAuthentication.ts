@@ -3,10 +3,9 @@ import {
   AdminUpdateUserAttributesCommand,
   CognitoIdentityProvider,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { SES, SendEmailCommand } from "@aws-sdk/client-ses";
+import { Notifier } from "./infrastructure/notifier";
 
 const provider = new CognitoIdentityProvider({ region: "ap-northeast-1" });
-const ses = new SES({ region: "ap-northeast-1" });
 
 export const handler: PostAuthenticationTriggerHandler = async (event) => {
   console.log("PostAuthentication event", event);
@@ -24,26 +23,13 @@ export const handler: PostAuthenticationTriggerHandler = async (event) => {
       Username: event.userName,
     })
   );
-  await ses.send(
-    new SendEmailCommand({
-      Destination: {
-        ToAddresses: [event.request.userAttributes.email],
-      },
-      Message: {
-        Subject: {
-          Charset: "UTF-8",
-          Data: "ログインのお知らせ",
-        },
-        Body: {
-          Text: {
-            Charset: "UTF-8",
-            Data: `${event.userName}さんがログイン完了しました。
-            見覚えがない場合は速やかにサポートにお問い合わせください。`,
-          },
-        },
-      },
-      Source: process.env.EMAIL_SOURCE,
-    })
+  const notifier = new Notifier();
+  await notifier.sendEmail(
+    event.request.userAttributes.email,
+    process.env.EMAIL_SOURCE ?? "",
+    "ログインのお知らせ",
+    `${event.userName}さんがログイン完了しました。
+    見覚えがない場合は速やかにサポートにお問い合わせください。`
   );
 
   return event;

@@ -1,6 +1,5 @@
 import { CreateAuthChallengeTriggerHandler } from "aws-lambda";
-import { SES, SendEmailCommand } from "@aws-sdk/client-ses";
-const ses = new SES({ region: "ap-northeast-1" });
+import { Notifier } from "./infrastructure/notifier";
 
 export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
   console.log("CreateAuthChallenge event", event);
@@ -10,25 +9,12 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
       questionType: "code",
     };
     const code = Math.random().toString(16).slice(-6).toUpperCase();
-    await ses.send(
-      new SendEmailCommand({
-        Destination: {
-          ToAddresses: [event.request.userAttributes.email],
-        },
-        Message: {
-          Subject: {
-            Charset: "UTF-8",
-            Data: `認証コード ${code}`,
-          },
-          Body: {
-            Text: {
-              Charset: "UTF-8",
-              Data: `Cognito sampleの認証コードは ${code} です。`,
-            },
-          },
-        },
-        Source: process.env.EMAIL_SOURCE,
-      })
+    const notifier = new Notifier();
+    await notifier.sendEmail(
+      event.request.userAttributes.email,
+      process.env.EMAIL_SOURCE ?? "",
+      `認証コード ${code}`,
+      `Cognito sampleの認証コードは ${code} です。`
     );
     event.response.privateChallengeParameters = {
       answer: code,
