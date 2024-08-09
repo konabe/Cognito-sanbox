@@ -1,106 +1,96 @@
 import { useState } from "react";
-import {
-  confirmSignIn,
-  confirmSignUp,
-  signIn,
-  signUp,
-} from "@aws-amplify/auth";
+import styled from "styled-components";
+import { confirmSignIn } from "@aws-amplify/auth";
 
-import "./SignIn.css";
+import IPass from "./IPass";
 
 function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const [code, setCode] = useState("");
   const [shouldShowConfirm, setShouldShowConfirm] = useState(false);
 
-  const clickLogin = async () => {
-    const result = await signIn({
-      username: email,
-      password: password,
-      options: {
-        authFlowType: "CUSTOM_WITH_SRP",
-      },
-    });
-    setShouldShowConfirm(
-      result.nextStep.signInStep === "CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE"
-    );
-  };
   const clickConfirmLogin = async () => {
     confirmSignIn({
       challengeResponse: code,
     });
   };
 
-  const clickSignup = async () => {
-    await signUp({
-      username: email,
-      password: password,
-    });
-  };
-  const clickConfirm = async () => {
-    await confirmSignUp({
-      username: email,
-      confirmationCode: code,
-    });
-  };
-
   return (
-    <div className="signin-container">
+    <SigninContainer>
       {!shouldShowConfirm ? (
-        <div className="login-container">
-          <h1>ログインする</h1>
-          <form className="login-form">
-            <label>
-              メールアドレス
-              <input
-                type="text"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label>
-              パスワード
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            <button type="button" onClick={clickLogin}>
-              ログイン
-            </button>
-            <button type="button" onClick={clickSignup}>
-              新規作成
-            </button>
-          </form>
-        </div>
+        <IPass onClick={setShouldShowConfirm} />
       ) : (
-        <>
-          <h1>チャレンジする</h1>
-          <form>
-            <label>
-              コード
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-              />
-            </label>
-            <button type="button" onClick={clickConfirmLogin}>
-              ログイン時のコード確認
-            </button>
-            <button type="button" onClick={clickConfirm}>
-              作成時のコード確認
-            </button>
-          </form>
-        </>
+        <ChallengeContainer>
+          <ChallengeTitleContainer>
+            <ChallengeTitle className="challenge-title">
+              ちゃれんじする
+            </ChallengeTitle>
+          </ChallengeTitleContainer>
+          <ChallengeInput
+            className="challenge-input"
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <ChallengeButton
+            className="challenge-button"
+            type="button"
+            onClick={clickConfirmLogin}
+          >
+            ログイン時のコード確認
+          </ChallengeButton>
+        </ChallengeContainer>
       )}
-    </div>
+    </SigninContainer>
   );
 }
 
 export default SignIn;
+
+const SigninContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+`;
+
+const ChallengeContainer = styled.div`
+  width: 100%;
+  height: 100vh;
+  background-color: #074df7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ChallengeTitleContainer = styled.div`
+  width: 100%;
+`;
+
+const ChallengeTitle = styled.h1`
+  font-size: 120px;
+  text-align: center;
+  text-align: justify;
+  text-align-last: justify;
+  text-justify: inter-character;
+  font-family: NRMJ_Sakon;
+`;
+
+const ChallengeInput = styled.input`
+  width: 80%;
+  height: 100px;
+  font-size: 60px;
+  text-align: center;
+  color: #1eb1fa;
+  background-color: rgba(1, 1, 1, 0);
+  border: 1px solid #1eb1fa;
+`;
+
+const ChallengeButton = styled.button`
+  width: 80%;
+  height: 100px;
+  font-size: 40px;
+  font-family: NagomiGokubosoGothic;
+  color: #1eb1fa;
+  background-color: rgba(1, 1, 1, 0);
+  border: none;
+`;

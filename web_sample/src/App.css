@@ -1,0 +1,15 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: "NagomiGokubosoGothic";
+  src: url("./assets/fonts/NagomiGokubosoGothic-ExtraLight.otf");
+}
+
+@font-face {
+  font-family: "NRMJ_Sakon";
+  src: url("./assets/fonts/NRMJ_Sakon.otf");
+}
