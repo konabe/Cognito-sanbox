@@ -9,18 +9,17 @@ const provider = new CognitoIdentityProvider({ region: "ap-northeast-1" });
 
 export const handler: PostAuthenticationTriggerHandler = async (event) => {
   console.log("PostAuthentication event", event);
-  // ログイン完了通知
 
   await provider.send(
     new AdminUpdateUserAttributesCommand({
+      UserPoolId: event.userPoolId,
+      Username: event.userName,
       UserAttributes: [
         {
           Name: "custom:lastLoginAt",
           Value: Math.floor(Date.now() / 1_000).toString(),
         },
       ],
-      UserPoolId: event.userPoolId,
-      Username: event.userName,
     })
   );
   const notifier = new Notifier();

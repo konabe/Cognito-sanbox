@@ -1,43 +1,50 @@
 import { useState } from "react";
-import { signIn, signUp } from "@aws-amplify/auth";
-
 import styled from "styled-components";
-import aImage from "./assets/images/A.jpg";
-import bImage from "./assets/images/B.jpg";
-import cImage from "./assets/images/C.jpg";
-import dImage from "./assets/images/D.jpg";
+import { AuthError, signIn, signUp } from "@aws-amplify/auth";
 
-function IPass({ onClick }: { onClick: (result: boolean) => void }) {
+import topLeftImage from "./assets/images/A.jpg";
+import topRightImage from "./assets/images/B.jpg";
+import bottomLeftImage from "./assets/images/C.jpg";
+import bottomRightImage from "./assets/images/D.jpg";
+
+function IPass({ onClickLogin }: { onClickLogin: (result: boolean) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const clickLogin = async () => {
-    const result = await signIn({
-      username: email,
-      password: password,
-      options: {
-        authFlowType: "CUSTOM_WITH_SRP",
-      },
-    });
-    onClick(
-      result.nextStep.signInStep === "CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE"
-    );
+    try {
+      const result = await signIn({
+        username: email,
+        password,
+        options: {
+          authFlowType: "CUSTOM_WITH_SRP",
+        },
+      });
+      const isSuccessful =
+        result.nextStep.signInStep === "CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE";
+      // TODO: 一発で通るユーザーもいるのでその制御が必要。
+      onClickLogin(isSuccessful);
+    } catch (e) {
+      if (e instanceof AuthError) {
+        alert(e.message);
+      }
+    }
   };
   const clickSignup = async () => {
     await signUp({
       username: email,
-      password: password,
+      password,
     });
   };
   return (
-    <LoginContainer>
-      <LoginBackground>
-        <LoginBackgroundImage src={aImage} />
-        <LoginBackgroundImage src={bImage} />
-        <LoginBackgroundImage src={cImage} />
-        <LoginBackgroundImage src={dImage} />
-      </LoginBackground>
-      <LoginContents>
+    <LoginFrame>
+      <BackgroundLayer>
+        <BackgroundImage src={topLeftImage} />
+        <BackgroundImage src={topRightImage} />
+        <BackgroundImage src={bottomLeftImage} />
+        <BackgroundImage src={bottomRightImage} />
+      </BackgroundLayer>
+      <ContentsLayer>
         <LoginForm>
           <MailLabelContainer>
             <MailLabel>mail</MailLabel>
@@ -58,7 +65,7 @@ function IPass({ onClick }: { onClick: (result: boolean) => void }) {
             <PassLabel>password</PassLabel>
           </PassLabelContainer>
         </LoginForm>
-      </LoginContents>
+      </ContentsLayer>
       <SubmitButtonContainer>
         <SubmitButton type="button" onClick={clickLogin}>
           送信
@@ -72,27 +79,44 @@ function IPass({ onClick }: { onClick: (result: boolean) => void }) {
           新規作成
         </SwitchButton>
       </SwitchContainer>
-    </LoginContainer>
+    </LoginFrame>
   );
 }
 
 export default IPass;
 
-const LoginContainer = styled.div`
+const LoginFrame = styled.div`
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
-  z-index: 20;
 `;
 
-const LoginContents = styled.div`
+const BackgroundLayer = styled.div`
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
   bottom: 0;
+  left: 0;
+  z-index: 0;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+`;
+
+const BackgroundImage = styled.img`
   width: 100%;
-  height: 100vh;
+  height: 100%;
+  max-height: 50vh; // object-fit=fillの場合、これで押さえつけないと上段の画像が勝手に大きくなってしまう。
+  object-fit: fill;
+`;
+
+const ContentsLayer = styled.div`
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 50;
 
   display: flex;
@@ -101,48 +125,12 @@ const LoginContents = styled.div`
   align-items: center;
 `;
 
-const LoginBackground = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  z-index: 10;
-
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-`;
-
-const LoginBackgroundImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-`;
-
 const LoginForm = styled.form`
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 80%;
-`;
-
-const SubmitButtonContainer = styled.div`
-  position: absolute;
-  top: calc(100% / 2 + 50px);
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  z-index: 60;
-`;
-
-const SubmitButton = styled.button`
-  width: fit-content;
-  height: 50px;
-  color: #1d8f9c;
-  background-color: rgba(255, 255, 255, 0.5);
-  border: none;
-  font-size: 24px;
 `;
 
 const MailInput = styled.input`
@@ -182,6 +170,25 @@ const PassLabelContainer = styled.div`
   display: flex;
   justify-content: end;
   width: 100%;
+`;
+
+const SubmitButtonContainer = styled.div`
+  position: absolute;
+  top: calc(100% / 2 + 50px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 60;
+`;
+
+const SubmitButton = styled.button`
+  width: fit-content;
+  height: 50px;
+  color: #1d8f9c;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: none;
+  font-size: 24px;
 `;
 
 const SwitchContainer = styled.div`

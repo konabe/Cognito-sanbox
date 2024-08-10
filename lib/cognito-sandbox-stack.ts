@@ -6,15 +6,17 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambda_nodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import path = require("path");
 
+const createName = (name: string) => `cognito-sandbox-${name}`;
+
 export class CognitoSandboxStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const lambdaRole = new iam.Role(this, "LambdaRole", {
-      roleName: "cognito-sandbox-lambda-role",
+      roleName: createName("lambda-role"),
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
       inlinePolicies: {
-        CloudWatchWritePolicy: new iam.PolicyDocument({
+        policy: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
@@ -22,9 +24,7 @@ export class CognitoSandboxStack extends cdk.Stack {
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream",
                 "logs:PutLogEvents",
-                "cognito-sync:*",
-                "cognito-identity:*",
-                "cognito-idp:*",
+                "cognito-idp:AdminUpdateUserAttributes",
                 "ses:SendEmail",
               ],
               resources: ["*"],
@@ -33,29 +33,30 @@ export class CognitoSandboxStack extends cdk.Stack {
         }),
       },
     });
+    const lambdaCommonProps: cdk.aws_lambda_nodejs.NodejsFunctionProps = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: "handler",
+      role: lambdaRole,
+      environment: {
+        EMAIL_SOURCE: process.env.EMAIL_SOURCE ?? "",
+      },
+    };
     const defineAuthChallengeFunction = new lambda_nodejs.NodejsFunction(
       this,
       "DefineAuthChallengeFunction",
       {
-        functionName: "cognito-sandbox-define-auth-challenge",
+        ...lambdaCommonProps,
+        functionName: createName("define-auth-challenge"),
         entry: path.join(__dirname, "../lambda/defineAuthChallenge.ts"),
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        role: lambdaRole,
       }
     );
     const createAuthChallengeFunction = new lambda_nodejs.NodejsFunction(
       this,
       "CreateAuthChallengeFunction",
       {
-        functionName: "cognito-sandbox-create-auth-challenge",
+        ...lambdaCommonProps,
+        functionName: createName("create-auth-challenge"),
         entry: path.join(__dirname, "../lambda/createAuthChallenge.ts"),
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        role: lambdaRole,
-        environment: {
-          EMAIL_SOURCE: process.env.EMAIL_SOURCE ?? "",
-        },
       }
     );
     const verifyAuthChallengeResponseFunction =
@@ -63,33 +64,26 @@ export class CognitoSandboxStack extends cdk.Stack {
         this,
         "VerifyAuthChallengeresponseFunction",
         {
-          functionName: "cognito-sandbox-verify-auth-challenge-response",
+          ...lambdaCommonProps,
+          functionName: createName("verify-auth-challenge-response"),
           entry: path.join(
             __dirname,
             "../lambda/verifyAuthChallengeRepsonse.ts"
           ),
-          runtime: lambda.Runtime.NODEJS_20_X,
-          handler: "handler",
-          role: lambdaRole,
         }
       );
     const postAuthenticationFunction = new lambda_nodejs.NodejsFunction(
       this,
       "PostAuthenticationFunction",
       {
-        functionName: "cognito-sandbox-post-authentication",
+        ...lambdaCommonProps,
+        functionName: createName("post-authentication"),
         entry: path.join(__dirname, "../lambda/postAuthentication.ts"),
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        role: lambdaRole,
-        environment: {
-          EMAIL_SOURCE: process.env.EMAIL_SOURCE ?? "",
-        },
       }
     );
 
     const userPool = new cognito.UserPool(this, "UserPool", {
-      userPoolName: "cognito-sandbox-user-pool",
+      userPoolName: createName("user-pool"),
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -107,7 +101,7 @@ export class CognitoSandboxStack extends cdk.Stack {
     });
     const userPoolClient = new cognito.UserPoolClient(this, "UserPoolClient", {
       userPool,
-      userPoolClientName: "cognito-sandbox-user-pool-client",
+      userPoolClientName: createName("user-pool-client"),
       authFlows: {
         adminUserPassword: true,
         custom: true,
@@ -120,9 +114,8 @@ export class CognitoSandboxStack extends cdk.Stack {
       idTokenValidity: cdk.Duration.minutes(20),
       preventUserExistenceErrors: false, // 学習のためエラーの詳細がわかるようにする。
     });
-
     const identityPool = new cognito.CfnIdentityPool(this, "IdentityPool", {
-      identityPoolName: "cognito-sandbox-identity-pool",
+      identityPoolName: createName("identity-pool"),
       allowUnauthenticatedIdentities: true,
       cognitoIdentityProviders: [
         {
@@ -131,59 +124,49 @@ export class CognitoSandboxStack extends cdk.Stack {
         },
       ],
     });
-    const authenticatedPolicyDocument = new iam.PolicyDocument({
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ["cognito-sync:*", "cognito-identity:*"],
-          resources: ["*"],
-        }),
-      ],
-    });
 
-    const unauthenticatedPolicyDocument = new iam.PolicyDocument({
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ["cognito-sync:*"],
-          resources: ["*"],
-        }),
-      ],
-    });
+    const assumedBy = new iam.FederatedPrincipal(
+      "cognito-identity.amazonaws.com",
+      {
+        StringEquals: {
+          "cognito-identity.amazonaws.com:aud": identityPool.ref,
+        },
+        "ForAnyValue:StringLike": {
+          "cognito-identity.amazonaws.com:amr": "authenticated",
+        },
+      },
+      "sts:AssumeRoleWithWebIdentity"
+    );
     const authenticatedRole = new iam.Role(this, "authRole", {
-      roleName: "cognito-sandbox-auth-role",
-      assumedBy: new iam.FederatedPrincipal(
-        "cognito-identity.amazonaws.com",
-        {
-          StringEquals: {
-            "cognito-identity.amazonaws.com:aud": identityPool.ref,
-          },
-          "ForAnyValue:StringLike": {
-            "cognito-identity.amazonaws.com:amr": "authenticated",
-          },
-        },
-        "sts:AssumeRoleWithWebIdentity"
-      ),
-      inlinePolicies: { policy: authenticatedPolicyDocument },
+      roleName: createName("auth-role"),
+      assumedBy,
+      inlinePolicies: {
+        policy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["cognito-sync:*", "cognito-identity:*"],
+              resources: ["*"],
+            }),
+          ],
+        }),
+      },
     });
-
     const unauthenticatedRole = new iam.Role(this, "unauthRole", {
-      roleName: "cognito-sandbox-unauth-role",
-      assumedBy: new iam.FederatedPrincipal(
-        "cognito-identity.amazonaws.com",
-        {
-          StringEquals: {
-            "cognito-identity.amazonaws.com:aud": identityPool.ref,
-          },
-          "ForAnyValue:StringLike": {
-            "cognito-identity.amazonaws.com:amr": "unauthenticated",
-          },
-        },
-        "sts:AssumeRoleWithWebIdentity"
-      ),
-      inlinePolicies: { policy: unauthenticatedPolicyDocument },
+      roleName: createName("unauth-role"),
+      assumedBy,
+      inlinePolicies: {
+        policy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["cognito-sync:*"],
+              resources: ["*"],
+            }),
+          ],
+        }),
+      },
     });
-
     new cognito.CfnIdentityPoolRoleAttachment(this, "roleAttachment", {
       identityPoolId: identityPool.ref,
       roles: {

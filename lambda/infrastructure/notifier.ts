@@ -8,7 +8,7 @@ export class Notifier {
   }
 
   async sendEmail(to: string, source: string, subject: string, body: string) {
-    const commonCharSet = "UTF-8";
+    const COMMON_CHAR_SET = "UTF-8";
     await this.ses.send(
       new SendEmailCommand({
         Destination: {
@@ -16,12 +16,12 @@ export class Notifier {
         },
         Message: {
           Subject: {
-            Charset: commonCharSet,
+            Charset: COMMON_CHAR_SET,
             Data: subject,
           },
           Body: {
             Text: {
-              Charset: commonCharSet,
+              Charset: COMMON_CHAR_SET,
               Data: body,
             },
           },

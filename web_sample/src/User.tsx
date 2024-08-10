@@ -23,7 +23,6 @@ function User() {
     if (authStatus === "authenticated") {
       // NOTE: useAuthenticatorを使うと状態が変化しても自動的に反映してくれない
       const userAttributes = await fetchUserAttributes();
-      console.log(userAttributes);
       setUsername(userAttributes.sub ?? "無し");
       setUserEmail(userAttributes.email ?? "無し");
       setLastLoginedAt(userAttributes["custom:lastLoginAt"] ?? "無し");

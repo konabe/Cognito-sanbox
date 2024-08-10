@@ -5,9 +5,6 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
   console.log("CreateAuthChallenge event", event);
 
   if (event.request.challengeName === "CUSTOM_CHALLENGE") {
-    event.response.publicChallengeParameters = {
-      questionType: "code",
-    };
     const code = Math.random().toString(16).slice(-6).toUpperCase();
     const notifier = new Notifier();
     await notifier.sendEmail(
@@ -16,6 +13,9 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
       `認証コード ${code}`,
       `Cognito sampleの認証コードは ${code} です。`
     );
+    event.response.publicChallengeParameters = {
+      questionType: "code",
+    };
     event.response.privateChallengeParameters = {
       answer: code,
     };
