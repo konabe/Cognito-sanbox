@@ -3,6 +3,7 @@ import { DefineAuthChallengeTriggerHandler } from "aws-lambda";
 export const handler: DefineAuthChallengeTriggerHandler = async (event) => {
   console.log("DefineAuthChallenge event", event);
 
+  const enabledMFA = event.request.userAttributes["custom:enabledMFA"];
   const lastSession = event.request.session.slice(-1)[0];
   const sessionLength = event.request.session.length;
   event.response.failAuthentication = false;
@@ -17,6 +18,10 @@ export const handler: DefineAuthChallengeTriggerHandler = async (event) => {
   }
   if (lastSession.challengeName === "PASSWORD_VERIFIER") {
     if (lastSession.challengeResult) {
+      if (enabledMFA === undefined || enabledMFA === "false") {
+        event.response.issueTokens = true;
+        return event;
+      }
       event.response.challengeName = "CUSTOM_CHALLENGE";
     }
     return event;

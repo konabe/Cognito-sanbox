@@ -3,11 +3,11 @@ import { SendEmailCommand, SES } from "@aws-sdk/client-ses";
 export class Notifier {
   private ses: SES;
 
-  constructor() {
+  constructor(private source: string) {
     this.ses = new SES({ region: "ap-northeast-1" });
   }
 
-  async sendEmail(to: string, source: string, subject: string, body: string) {
+  async sendEmail(to: string, subject: string, body: string) {
     const COMMON_CHAR_SET = "UTF-8";
     await this.ses.send(
       new SendEmailCommand({
@@ -26,7 +26,7 @@ export class Notifier {
             },
           },
         },
-        Source: source,
+        Source: this.source,
       })
     );
   }

@@ -1,13 +1,21 @@
-import { fetchUserAttributes, signOut } from "@aws-amplify/auth";
+import {
+  fetchUserAttributes,
+  fetchAuthSession,
+  signOut,
+} from "@aws-amplify/auth";
 import { useAuthenticator } from "@aws-amplify/ui-react";
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 function User() {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
 
+  const [idToken, setIDToken] = useState("");
   const [username, setUsername] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [lastLoginedAt, setLastLoginedAt] = useState("");
+  const [enabledMFA, setEnabledMFA] = useState(false);
+
   const lastLoginedAtText = () => {
     if (lastLoginedAt === "無し") {
       return "無し";
@@ -23,9 +31,32 @@ function User() {
     if (authStatus === "authenticated") {
       // NOTE: useAuthenticatorを使うと状態が変化しても自動的に反映してくれない
       const userAttributes = await fetchUserAttributes();
+      const authSession = await fetchAuthSession();
+      setIDToken(authSession.tokens?.idToken?.toString() ?? "");
       setUsername(userAttributes.sub ?? "無し");
       setUserEmail(userAttributes.email ?? "無し");
       setLastLoginedAt(userAttributes["custom:lastLoginAt"] ?? "無し");
+      setEnabledMFA(userAttributes["custom:enabledMFA"] === "true");
+    }
+  };
+
+  const clickSwitchMFA = async () => {
+    const BASE_URL =
+      "https://csklsugycc.execute-api.ap-northeast-1.amazonaws.com/v1";
+    const response = await axios.patch(
+      `${BASE_URL}/user`,
+      {
+        enabledMFA: !enabledMFA,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+    if (response.status === 200) {
+      setEnabledMFA(response.data.enabledMFA);
     }
   };
 
@@ -55,6 +86,11 @@ function User() {
           </div>
           <div>{lastLoginedAtText()}</div>
         </div>
+      </div>
+      <div>
+        <button onClick={clickSwitchMFA}>
+          {`二要素認証を${!enabledMFA ? "有効" : "無効"}にする`}
+        </button>
       </div>
       <button onClick={clickSignOut}>ログアウトする</button>
     </>
